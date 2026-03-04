@@ -1,0 +1,3 @@
+ALTER TABLE purchases DROP COLUMN id;
+ALTER TABLE purchases ADD COLUMN id UUID DEFAULT gen_random_uuid() PRIMARY KEY;
+

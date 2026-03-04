@@ -1,0 +1,25 @@
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Silence everything by default -->
+    <root level="OFF">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- Only your app logs -->
+    <logger name="org.example" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- Silence Hibernate SQL -->
+    <logger name="org.hibernate" level="OFF" additivity="false"/>
+    <logger name="org.hibernate.SQL" level="OFF" additivity="false"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="OFF" additivity="false"/>
+
+</configuration>
+
