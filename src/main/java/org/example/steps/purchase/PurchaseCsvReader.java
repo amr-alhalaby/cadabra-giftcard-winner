@@ -1,6 +1,7 @@
 package org.example.steps.purchase;
 
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.example.common.ResourceResolver;
 import org.example.dto.PurchaseCsvRow;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
  * Reads purchases from CSV file, returning them one by one.
  * The CSV path is provided as a job parameter, falling back to the configured default classpath resource.
  */
+@Slf4j
 @Component
 @StepScope
 public class PurchaseCsvReader implements ItemStreamReader<PurchaseCsvRow> {
@@ -37,6 +39,7 @@ public class PurchaseCsvReader implements ItemStreamReader<PurchaseCsvRow> {
 
     @PostConstruct
     public void init() throws Exception {
+        log.info("Initializing PurchaseCsvReader — path: {}, delimiter: '{}', linesToSkip: {}", csvPath, delimiter, linesToSkip);
         delegate = new FlatFileItemReaderBuilder<PurchaseCsvRow>()
                 .name("purchaseCsvReader")
                 .resource(ResourceResolver.resolve(csvPath))
@@ -58,6 +61,7 @@ public class PurchaseCsvReader implements ItemStreamReader<PurchaseCsvRow> {
 
     @Override
     public void open(@NonNull ExecutionContext executionContext) {
+        log.info("Opening CSV reader for file: {}", csvPath);
         delegate.open(executionContext);
     }
 
@@ -68,6 +72,7 @@ public class PurchaseCsvReader implements ItemStreamReader<PurchaseCsvRow> {
 
     @Override
     public void close() {
+        log.info("Closing CSV reader for file: {}", csvPath);
         delegate.close();
     }
 }

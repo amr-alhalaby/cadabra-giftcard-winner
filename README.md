@@ -106,35 +106,66 @@ Make sure PostgreSQL is running on `localhost:5432` with a database named `cadab
 
 ```
 ├── src/main/java/org/example/
-│   ├── CadabraGiftcardWinnerApplication.java   # Entry point
+│   ├── CadabraGiftcardWinnerApplication.java    # Entry point
 │   ├── config/
 │   │   ├── GiftCardWinnerJobConfig.java         # Spring Batch job configuration
+│   │   ├── JobMdcListener.java                  # Adds jobExecutionId to MDC for log traceability
 │   │   └── RestTemplateConfig.java              # REST client config
 │   ├── common/
 │   │   ├── Constants.java                       # Shared step/job name constants
 │   │   └── ResourceResolver.java                # Classpath vs filesystem resource resolver
+│   ├── dto/
+│   │   ├── PurchaseCsvRow.java                  # CSV row DTO for purchases
+│   │   └── UserApiResponse.java                 # API response DTO for users
+│   ├── exception/
+│   │   └── UserApiFetchException.java           # Custom exception for API failures
+│   ├── mapper/
+│   │   ├── PurchaseMapper.java                  # MapStruct: CSV row → Purchase entity
+│   │   └── UserMapper.java                      # MapStruct: API response → User entity
 │   ├── steps/
 │   │   ├── user/                                # Step 1: fetch users from API
+│   │   │   ├── FetchUsersStepConfig.java        # Step, reader, processor, writer wiring
+│   │   │   ├── UserApiReader.java               # Reads users from REST API one by one
+│   │   │   └── UserApiProcessor.java            # Maps API DTO → User entity
 │   │   ├── purchase/                            # Step 2: load purchases from CSV
+│   │   │   ├── LoadPurchasesStepConfig.java     # Step, reader, processor, writer wiring
+│   │   │   ├── PurchaseCsvReader.java           # Reads CSV file with configurable path/delimiter
+│   │   │   ├── PurchaseProcessor.java           # Maps CSV row → Purchase entity
+│   │   │   └── PurchaseSkipListener.java        # Persists skipped rows to validation_errors
 │   │   └── winner/                              # Step 3: select random winner
+│   │       ├── SelectWinnerStepConfig.java      # Tasklet step wiring
+│   │       └── WinnerTasklet.java               # Selects random eligible winner
 │   ├── model/
 │   │   ├── User.java
 │   │   ├── Purchase.java                        # Includes job_execution_id for run isolation
 │   │   └── ValidationError.java
 │   ├── service/
-│   │   ├── UserApiService.java
-│   │   ├── WinnerSelectionService.java
-│   │   └── ValidationErrorService.java
+│   │   ├── UserApiService.java                  # Fetches users from external API
+│   │   ├── WinnerSelectionService.java          # Winner selection + logging logic
+│   │   └── ValidationErrorService.java          # Persists validation errors
 │   └── repository/
-│       ├── UserRepository.java
+│       ├── UserRepository.java                  # Includes random eligible user query
 │       ├── PurchaseRepository.java
 │       └── ValidationErrorRepository.java
 ├── src/main/resources/
-│   ├── application.yml
+│   ├── application.yml                          # Main configuration
+│   ├── application-local.yml                    # Local/dev profile overrides
+│   ├── logback-spring.xml                       # Logging config with MDC jobExecutionId
+│   ├── sql/
+│   │   ├── insert-purchase.sql                  # Purchase insert SQL (used by JdbcBatchItemWriter)
+│   │   └── upsert-user.sql                      # User upsert SQL (used by JdbcBatchItemWriter)
 │   └── db/migration/                            # Flyway migrations
+│       ├── V1__create_users_and_purchases_tables.sql
+│       ├── V2__add_purchases_user_foreign_key.sql
+│       ├── V3__create_validation_errors_table.sql
+│       ├── V4__add_file_name_to_validation_errors.sql
+│       ├── V5__drop_purchases_user_foreign_key.sql
+│       ├── V6__add_job_execution_id_to_purchases.sql
+│       ├── V7__change_purchases_id_to_uuid.sql
+│       └── V8__change_validation_errors_id_to_uuid.sql
 ├── data/                                        # Drop CSV files here
 ├── docker-compose.yml
-├── docker-entrypoint.sh                         # Injects -run.at timestamp for job rerunnability
+├── docker-entrypoint.sh                         # Injects run.at timestamp for job rerunnability
 ├── Dockerfile
 ├── run.sh                                       # Convenience run script
 └── README.md
@@ -147,15 +178,6 @@ Make sure PostgreSQL is running on `localhost:5432` with a database named `cadab
 ### Job Monitoring & Alerts
 
 ```sql
--- All job executions with status and duration
-SELECT job_execution_id,
-       start_time,
-       end_time,
-       status,
-       exit_code,
-       EXTRACT(EPOCH FROM (end_time - start_time)) AS duration_seconds
-FROM batch_job_execution
-ORDER BY start_time DESC;
 
 -- Failed job executions (use for alerts)
 SELECT job_execution_id,
@@ -173,17 +195,6 @@ FROM batch_job_execution
 WHERE status NOT IN ('COMPLETED', 'FAILED')
   AND start_time < NOW() - INTERVAL '24 hours';
 
--- Winner per job execution (from execution context)
-SELECT je.job_execution_id,
-       je.start_time,
-       je.status,
-       jp.string_val                           AS csv_file,
-       jec.short_context
-FROM batch_job_execution je
-         JOIN batch_job_execution_context jec ON je.job_execution_id = jec.job_execution_id
-         JOIN batch_job_execution_params jp ON je.job_execution_id = jp.job_execution_id
-WHERE jp.parameter_name = 'purchases.csv.path'
-ORDER BY je.start_time DESC;
 ```
 
 ---
@@ -236,22 +247,55 @@ ORDER BY error_count DESC;
 
 ---
 
+## Non-Functional Requirements
+
+### Performance — Batch Writes
+All database writes use `JdbcBatchItemWriter` instead of individual JPA `save()` calls. This batches multiple rows into a single JDBC batch statement per chunk, significantly reducing the number of round-trips to the database and improving throughput on large CSV files.
+
+### Observability — Debug Logging
+All batch components (`PurchaseCsvReader`, `PurchaseProcessor`, `UserApiReader`, `UserApiProcessor`, `WinnerTasklet`) include `debug`-level log messages covering data flow, mapping, and lifecycle events. These are silent in production and can be enabled per-environment for troubleshooting.
+
+### Traceability — Job Execution ID in Logs
+Every log message includes the current `jobExecutionId` via SLF4J MDC (`[jobId=42]`). A `JobExecutionListener` (`JobMdcListener`) sets the value before the job starts and clears it after the job ends, making it easy to filter and correlate all log entries for a specific run.
+
+### Auditability — Validation Error Tracking
+Rows that fail to parse or process are not silently dropped. Each skipped row is persisted to the `validation_errors` table with:
+- `job_execution_id` — which run encountered the error
+- `step_name` — which step failed
+- `file_name` — which CSV file the error came from
+- `raw_data` — the original row content
+- `error_message` — the reason for failure
+
+This enables post-run auditing and alerting on error counts per file or job.
+
+### Configurability — Externalized Configuration
+All tunable parameters are externalized in `application.yml` and can be overridden per environment or via Docker environment variables:
+- CSV path, delimiter, columns, lines to skip
+- Chunk size and max skip lines (fault tolerance)
+- Minimum purchase amount for winner eligibility
+- External API base URL
+- Database connection settings
+
+No values are hardcoded in Java code.
+
+---
+
 ## Scaling Strategy
 
 ### Partitioned Step — Parallel CSV Processing
-Split the CSV into line ranges and process each range in a **separate thread within the same JVM**:
+A single large CSV file can be split into line ranges and each range processed in a **separate thread within the same JVM**:
 
 ```
 Single JVM
-├── Master Step → splits file into N partitions
+├── Master Step → splits single CSV into N line-range partitions
 ├── Worker 1   → processes lines 1–1000
 ├── Worker 2   → processes lines 1001–2000
 └── Worker 3   → processes lines 2001–3000
 ```
 
-Each worker runs the same `loadPurchasesStep` logic on its assigned range, sharing the same DB connection pool and transaction manager.
+Each worker runs the same `loadPurchasesStep` logic on its assigned range, sharing the same DB connection pool and transaction manager. Spring Batch's `Partitioner` interface is used to divide the file, and a `TaskExecutor` controls the thread pool size.
 
-**When to use:** CSV files too large for a single thread but still running on one machine.
+**When to use:** A single CSV file is too large for one thread to process efficiently, but the workload fits on one machine.
 
 ### Remote Partitioning — Distributed Workers
 Extends partitioning across **multiple pods/machines** using a message broker (RabbitMQ / Kafka / SQS). The master sends partition metadata as messages; remote workers pick them up and process independently:

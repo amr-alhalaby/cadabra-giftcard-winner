@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 public class GiftCardWinnerJobConfig {
 
     private final JobRepository jobRepository;
+    private final JobMdcListener jobMdcListener;
 
     @Bean
     public Job giftCardWinnerJob(
@@ -25,6 +26,7 @@ public class GiftCardWinnerJobConfig {
             @Qualifier(Constants.SELECT_WINNER_STEP) Step selectWinnerStep) {
         return new JobBuilder(Constants.GIFT_CARD_WINNER_JOB, jobRepository)
                 .incrementer(new RunIdIncrementer())
+                .listener(jobMdcListener)
                 .start(fetchUsersStep)
                 .next(loadPurchasesStep)
                 .next(selectWinnerStep)

@@ -1,6 +1,7 @@
 package org.example.steps.winner;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.model.User;
 import org.example.service.WinnerSelectionService;
 import org.springframework.batch.core.StepContribution;
@@ -11,6 +12,7 @@ import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class WinnerTasklet implements Tasklet {
@@ -20,6 +22,7 @@ public class WinnerTasklet implements Tasklet {
     @Override
     public RepeatStatus execute(@NonNull StepContribution contribution, @NonNull ChunkContext chunkContext) {
         Long jobExecutionId = chunkContext.getStepContext().getStepExecution().getJobExecutionId();
+        log.debug("Selecting winner for jobExecutionId: {}", jobExecutionId);
 
         winnerSelectionService.announceWinner(jobExecutionId)
                 .ifPresent(winner -> saveWinnerToContext(winner, chunkContext));
@@ -33,5 +36,6 @@ public class WinnerTasklet implements Tasklet {
                 .getJobExecution()
                 .getExecutionContext();
         jobContext.putLong("winner.id", winner.getId());
+        log.debug("Winner saved to execution context — userId: {}, name: {}", winner.getId(), winner.getName());
     }
 }

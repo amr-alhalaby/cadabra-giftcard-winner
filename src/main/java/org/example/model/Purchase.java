@@ -1,7 +1,6 @@
 package org.example.model;
 
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -20,8 +19,7 @@ import java.util.UUID;
 public class Purchase {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
+    @UuidGenerator(style = UuidGenerator.Style.RANDOM)
     private UUID id;
 
     private Long userId;

@@ -20,7 +20,6 @@ import org.springframework.batch.test.JobLauncherTestUtils;
 import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.util.List;
@@ -30,7 +29,6 @@ import static org.mockito.Mockito.when;
 
 @IntegrationTest
 @SpringBatchTest
-@SpringBootTest
 @DisplayName("Gift Card Winner Job - Full Scenarios")
 class GiftCardWinnerJobScenariosTest {
 
@@ -206,5 +204,3 @@ class GiftCardWinnerJobScenariosTest {
                 .build();
     }
 }
-
-

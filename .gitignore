@@ -55,7 +55,7 @@ data/*.csv
 # H2 local database
 *.mv.db
 *.trace.db
-data/
+
 
 # Logs
 *.log

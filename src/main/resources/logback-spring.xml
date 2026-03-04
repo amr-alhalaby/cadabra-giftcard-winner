@@ -2,9 +2,10 @@
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{HH:mm:ss} %-5level [jobId=%X{jobExecutionId:-N/A}] %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
+
 
     <!-- Silence everything by default -->
     <root level="OFF">
@@ -14,6 +15,11 @@
     <!-- Only your app logs -->
     <logger name="org.example" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- App SQL statements only — no BATCH_* noise -->
+    <logger name="org.springframework.jdbc.core.JdbcTemplate" level="DEBUG" additivity="false">
+        <appender-ref ref="APP_SQL_APPENDER"/>
     </logger>
 
     <!-- Silence Hibernate SQL -->

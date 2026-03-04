@@ -2,7 +2,6 @@ package org.example.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -27,8 +26,7 @@ import java.util.UUID;
 public class ValidationError {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
+    @UuidGenerator(style = UuidGenerator.Style.RANDOM)
     private UUID id;
 
     private Long jobExecutionId;
@@ -37,10 +35,10 @@ public class ValidationError {
 
     private String fileName;
 
-    @Column(length = 1000)
+    @Column(length = 2000)
     private String rawData;
 
-    @Column(length = 1000)
+    @Column(length = 2000)
     private String errorMessage;
 
     private LocalDateTime createdAt;

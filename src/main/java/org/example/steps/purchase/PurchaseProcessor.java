@@ -23,8 +23,10 @@ public class PurchaseProcessor implements ItemProcessor<PurchaseCsvRow, Purchase
 
     @Override
     public Purchase process(PurchaseCsvRow row) {
+        log.debug("Processing CSV row — userId: {}, amount: {}", row.getUserId(), row.getAmount());
         Purchase purchase = purchaseMapper.toPurchase(row);
         purchase.setJobExecutionId(jobExecutionId);
+        log.debug("Mapped purchase — userId: {}, amount: {}, jobExecutionId: {}", purchase.getUserId(), purchase.getAmount(), jobExecutionId);
         return purchase;
     }
 }
