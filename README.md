@@ -335,3 +335,6 @@ implementation 'org.springframework.batch:spring-batch-integration'
 implementation 'org.springframework.boot:spring-boot-starter-amqp'  // or kafka
 ```
 
+### Winner Selection at Scale
+The current `ORDER BY RANDOM() LIMIT 1` query works well for small datasets but degrades at scale (`O(n log n)` sort). For millions of eligible users, consider a **COUNT + OFFSET** approach — count eligible users, generate a random offset in Java, and fetch one row.
+
