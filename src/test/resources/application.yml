@@ -15,6 +15,9 @@ spring:
     job:
       enabled: false
 
+user:
+  chunk-size: 10
+
 csv:
   purchases:
     default-path: data/test-purchases.csv

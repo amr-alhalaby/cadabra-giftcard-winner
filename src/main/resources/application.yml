@@ -17,10 +17,6 @@ spring:
       ddl-auto: validate
     show-sql: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    properties:
-      hibernate:
-        jdbc:
-          batch_size: ${csv.purchases.chunk-size}
 
   flyway:
     enabled: true
@@ -32,14 +28,18 @@ spring:
     job:
       enabled: true
 
+
+user:
+  chunk-size: 10
+
 csv:
   purchases:
     default-path: data/purchases.csv
     columns: userId,amount
     delimiter: ","
     lines-to-skip: 1
-    max-skip-lines: 10
-    chunk-size: 50
+    max-skip-lines: 5
+    chunk-size: 10
 
 winner:
   min-purchase-amount: 20

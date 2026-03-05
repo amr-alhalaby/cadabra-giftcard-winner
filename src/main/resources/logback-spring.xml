@@ -7,19 +7,14 @@
     </appender>
 
 
-    <!-- Silence everything by default -->
-    <root level="OFF">
+    <!-- Only warnings and errors from libraries by default -->
+    <root level="WARN">
         <appender-ref ref="CONSOLE"/>
     </root>
 
     <!-- Only your app logs -->
-    <logger name="org.example" level="INFO" additivity="false">
+    <logger name="org.cadabra" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
-    </logger>
-
-    <!-- App SQL statements only — no BATCH_* noise -->
-    <logger name="org.springframework.jdbc.core.JdbcTemplate" level="DEBUG" additivity="false">
-        <appender-ref ref="APP_SQL_APPENDER"/>
     </logger>
 
     <!-- Silence Hibernate SQL -->
