@@ -102,6 +102,23 @@ Make sure PostgreSQL is running on `localhost:5432` with a database named `cadab
 
 ---
 
+### Running Tests
+
+```bash
+# Run unit tests only (no Docker required)
+./gradlew test
+
+# Run integration tests only (requires Docker — uses Testcontainers with PostgreSQL)
+./gradlew integrationTest
+
+# Run both unit and integration tests
+./gradlew test integrationTest
+```
+
+> **Note:** Integration tests are tagged with `@IntegrationTest` and use [Testcontainers](https://www.testcontainers.org/) to spin up a real PostgreSQL instance. Docker must be running on your machine.
+
+---
+
 ## Project Structure
 
 ```
